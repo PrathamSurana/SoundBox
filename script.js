@@ -2,19 +2,26 @@ const soundsElement = document.querySelector('#sounds');
 const stopButton = document.querySelector('#stopButton');
 const players = [];
 
-let keyCodes = [81, 87, 69, 82, 65, 83, 68, 70, 90, 88, 67, 86];
+const keyCodes = [81, 87, 69, 82, 65, 83, 68, 70, 90, 88, 67, 86];
+const keyMap = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyZ', 'KeyX', 'KeyC', 'KeyV'];
+const keysPressed = new Set();
 
 stopButton.addEventListener('click', stopAll);
 
+// Immediately-Invoked Function Expression (IIFE) to fetch sounds on page load
 (async () => {
   const sounds = await getSounds();
   addSoundsToPage(sounds);
 })();
 
 async function getSounds() {
-  const response = await fetch('./sounds.json');
-  const json = await response.json();
-  return json;
+  try {
+    const response = await fetch('./sounds.json');
+    const json = await response.json();
+    return json;
+  } catch (error) {
+    console.error('Failed to load sounds.json:', error);
+  }
 }
 
 function addSoundsToPage(sounds) {
@@ -32,7 +39,7 @@ function addSoundToPage(sound, index) {
   soundDiv.appendChild(soundTitle);
 
   const key = document.createElement('img');
-  key.setAttribute('src', `keys/${keyCodes[index]}.png`)
+  key.setAttribute('src', `keys/${keyCodes[index]}.png`);
   soundDiv.appendChild(key);
 
   const player = document.createElement('audio');
@@ -40,49 +47,55 @@ function addSoundToPage(sound, index) {
   soundDiv.appendChild(player);
   players.push({ player, soundDiv, key });
 
-  soundDiv.addEventListener('mousedown', () => {
-    soundPress(soundDiv, player);
+  // When a sound finishes playing on its own, remove the 'playing' class
+  player.addEventListener('ended', () => {
+    soundDiv.classList.remove('playing');
+    // Also remove from keysPressed if it was triggered by a key
   });
 
-  soundDiv.addEventListener('mouseup', () => {
-    soundDiv.style.background = '';
+  soundDiv.addEventListener('mousedown', () => {
+    soundPress(soundDiv, player);
   });
 
   soundsElement.appendChild(soundDiv);
 }
 
 function soundPress(div, player) {
-  div.style.background = '#0941a1';
   player.currentTime = 0;
   player.play();
 }
 
 function listenKeyPress() {
   document.addEventListener('keydown', (event) => {
-    console.log(event);
-    if (event.keyCode == 32) return stopAll();
-    const playerIndex = keyCodes.indexOf(event.keyCode);
+    if (event.code === 'Space') return stopAll();
+    if (keysPressed.has(event.code)) return; // Prevent re-triggering on key hold
+
+    const playerIndex = keyMap.indexOf(event.code);
     const playerAndDiv = players[playerIndex];
-    if (playerAndDiv && !playerAndDiv.keydown) {
-      playerAndDiv.keydown = true;
-      playerAndDiv.key.style.transform = 'scaleY(0.75)';
+
+    if (playerAndDiv) {
+      keysPressed.add(event.code);
+      playerAndDiv.soundDiv.classList.add('playing');
       soundPress(playerAndDiv.soundDiv, playerAndDiv.player);
     }
   });
 
   document.addEventListener('keyup', (event) => {
-    const playerIndex = keyCodes.indexOf(event.keyCode);
+    const playerIndex = keyMap.indexOf(event.code);
     const playerAndDiv = players[playerIndex];
     if (playerAndDiv) {
-      playerAndDiv.soundDiv.style.background = '';
-      playerAndDiv.keydown = false;
-      playerAndDiv.key.style.transform = '';
+      keysPressed.delete(event.code);
+      playerAndDiv.soundDiv.classList.remove('playing');
     }
   });
 }
 
 function stopAll() {
-  players.forEach(({player}) => {
+  players.forEach(({player, soundDiv}) => {
     player.pause();
+    player.currentTime = 0;
+    soundDiv.classList.remove('playing');
   });
+  // Clear the set of all currently pressed keys
+  keysPressed.clear();
 }

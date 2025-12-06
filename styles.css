@@ -4,6 +4,7 @@ body {
   color: white;
   text-align: center;
   font-size: 1vw;
+  margin: 0;
 }
 
 h1 {
@@ -22,6 +23,19 @@ h1 {
   margin: 2px;
   display: inline-block;
   width: 20%;
+  cursor: pointer;
+  transition: all 0.07s ease;
+  user-select: none; /* Prevents text selection on rapid clicks */
+}
+
+.sound:active, .sound.playing {
+  background: #0941a1;
+  border-color: #ffc600;
+  transform: scale(0.98);
+}
+
+.sound.playing img {
+  transform: scaleY(0.75);
 }
 
 img {
